@@ -1,5 +1,7 @@
 import datetime
+import functools
 import json
+import multiprocessing
 import os
 import subprocess
 from typing import Any, Dict, List, Optional, Union
@@ -10,7 +12,8 @@ from pydatalab.logger import LOGGER
 
 
 def get_directory_structures(
-    directories: List[Dict[str, str]], invalidate_cache: Optional[bool] = None
+    directories: List[Dict[str, str]],
+    invalidate_cache: Optional[bool] = None,
 ) -> List[Dict[str, Any]]:
     """For all registered top-level directories, call tree either
     locally or remotely to get their directory structures, or access
@@ -27,10 +30,9 @@ def get_directory_structures(
         A lists of dictionaries for each specified top-level directory.
 
     """
-    return [
-        get_directory_structure(directory, invalidate_cache=invalidate_cache)
-        for directory in directories
-    ]
+    return multiprocessing.Pool(min(len(directories), 8)).map(
+        functools.partial(get_directory_structure, invalidate_cache=invalidate_cache), directories
+    )
 
 
 def get_directory_structure(
