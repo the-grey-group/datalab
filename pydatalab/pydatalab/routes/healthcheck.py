@@ -10,12 +10,11 @@ def is_ready():
     from pymongo import MongoClient
     from pymongo.errors import ConnectionFailure
 
-    cli = MongoClient(
-        CONFIG.MONGO_URI,
-        connectTimeoutMS=100,
-    )
-
     try:
+        cli = MongoClient(
+            CONFIG.MONGO_URI, connectTimeoutMS=100, serverSelectionTimeoutMS=100, connect=True
+        )
+
         if cli.list_database_names():
             pass
     except ConnectionFailure:
