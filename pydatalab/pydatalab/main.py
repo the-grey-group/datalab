@@ -38,7 +38,23 @@ def create_app(config_override: Dict[str, Any] = None) -> Flask:
 
     @app.route("/")
     def index():
-        return "Hello, This is a server"
+        from pydatalab.routes import (
+            ENDPOINTS,  # pylint: disable=import-outside-toplevel
+        )
+
+        return (
+            """<h2><marquee width="200px">Welcome to pydatalab</marquee></h2>
+
+<h3>Available endpoints:</h3>
+<ul>"""
+            + "\n".join(
+                [
+                    f'<li><a href="{endp[0]}"><code><pre>{endp[0]}</pre></code></a></li>'
+                    for endp in ENDPOINTS.items()
+                ]
+            )
+            + "</ul>"
+        )
 
     return app
 
