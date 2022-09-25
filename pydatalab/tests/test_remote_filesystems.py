@@ -102,7 +102,9 @@ def test_get_directory_structure_remote():
         "last_updated": datetime.datetime.now(),
         "type": "toplevel",
     }
-    pydatalab.mongo.flask_mongo.db.remoteFilesystems.insert_one(dummy_dir_structure)
+    pydatalab.mongo._get_active_mongo_client().get_database().remoteFilesystems.insert_one(
+        dummy_dir_structure
+    )
     dir_structure = get_directory_structure(test_dir)
     assert dir_structure["last_updated"]
 
