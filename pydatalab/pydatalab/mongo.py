@@ -1,5 +1,6 @@
+# Must be imported in this way to allow for easy patching with mongomock
+import pymongo
 from flask_pymongo import PyMongo
-from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
 flask_mongo = PyMongo()
@@ -24,7 +25,7 @@ def check_mongo_connection():
     return True
 
 
-def _get_active_mongo_client(timeoutMS: int = 100) -> MongoClient:
+def _get_active_mongo_client(timeoutMS: int = 100) -> pymongo.MongoClient:
     """Returns a `MongoClient` for the configured `MONGO_URI`,
     raising a `RuntimeError` if not available.
     Parameters:
@@ -37,7 +38,7 @@ def _get_active_mongo_client(timeoutMS: int = 100) -> MongoClient:
     from pydatalab.logger import LOGGER
 
     try:
-        return MongoClient(
+        return pymongo.MongoClient(
             CONFIG.MONGO_URI,
             connectTimeoutMS=timeoutMS,
             serverSelectionTimeoutMS=timeoutMS,

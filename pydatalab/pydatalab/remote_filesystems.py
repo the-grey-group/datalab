@@ -6,8 +6,6 @@ import os
 import subprocess
 from typing import Any, Dict, List, Optional, Union
 
-import pymongo
-
 import pydatalab.mongo
 from pydatalab.config import CONFIG
 from pydatalab.logger import LOGGER
@@ -37,19 +35,18 @@ def get_directory_structures(
     if parallel:
         return multiprocessing.Pool(min(len(directories), 8)).map(
             functools.partial(
-                get_directory_structure, invalidate_cache=invalidate_cache, fork_safe=True
+                get_directory_structure,
+                invalidate_cache=invalidate_cache,
             ),
             directories,
         )
     else:
-        return [
-            get_directory_structure(d, invalidate_cache=invalidate_cache, fork_safe=False)
-            for d in directories
-        ]
+        return [get_directory_structure(d, invalidate_cache=invalidate_cache) for d in directories]
 
 
 def get_directory_structure(
-    directory: Dict[str, str], invalidate_cache: Optional[bool] = False, fork_safe: bool = True
+    directory: Dict[str, str],
+    invalidate_cache: Optional[bool] = False,
 ) -> Dict[str, Any]:
     """For the given remote directory, either reconstruct the directory
     structure in full, or access the cached version if is it recent
@@ -65,8 +62,6 @@ def get_directory_structure(
             be reset, provided the cache was not updated very recently. If `False`,
             the cache will not be reset, even if it is older than the maximum configured
             age.
-        fork_safe: If true, this method uses a new MongoDB connection rather than
-            the one tied to the flask app, allowing it to run in a separate thread.
 
     Returns:
         A dictionary with keys "name", "type" and "contents" for the
@@ -76,12 +71,8 @@ def get_directory_structure(
 
     LOGGER.debug(f"Accessing directory structure of {directory}")
 
-    collection = None
-    if fork_safe:
-        collection = pydatalab.mongo._get_active_mongo_client().get_database().remoteFilesystems
-
     try:
-        cached_dir_structure = _get_cached_directory_structure(directory, collection=collection)
+        cached_dir_structure = _get_cached_directory_structure(directory)
         cache_last_updated = None
         if cached_dir_structure:
             cache_last_updated = cached_dir_structure["last_updated"]
@@ -115,7 +106,8 @@ def get_directory_structure(
                 directory["path"], directory.get("hostname")
             )
             last_updated = _save_directory_structure(
-                directory, dir_structure, collection=collection
+                directory,
+                dir_structure,
             )
             LOGGER.debug(
                 "Remote filesystems cache miss for '%s': last updated %s",
@@ -275,7 +267,6 @@ def _fix_tree_paths(
 def _save_directory_structure(
     directory: Dict[str, Any],
     dir_structure: List[Dict[str, Any]],
-    collection: Optional[pymongo.collection.Collection],
 ) -> datetime.datetime:
     """Upserts the tree structure of each directory to the `remoteFilesystems`
     collection in the database.
@@ -283,17 +274,12 @@ def _save_directory_structure(
     Args:
         directory_name: The top-level directory name to update.
         dir_structure: The directory structure info.
-        collection: An optional MongoDB collection to update instead
-            of using the Flask Pymongo interface. This is useful if
-            the method is being called in a separate thread to the main
-            app.
 
     Returns:
         The last updated timestamp.
 
     """
-    if collection is None:
-        collection = pydatalab.mongo.flask_mongo.db.remoteFilesystems
+    collection = pydatalab.mongo._get_active_mongo_client().get_database().remoteFilesystems
 
     last_updated = datetime.datetime.now()
     last_updated = last_updated.replace(microsecond=0)
@@ -320,7 +306,7 @@ def _save_directory_structure(
 
 
 def _get_cached_directory_structure(
-    directory: Dict[str, Any], collection: Optional[pymongo.collection.Collection] = None
+    directory: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
     """Gets the structure of the given directory from the database.
 
@@ -331,6 +317,5 @@ def _get_cached_directory_structure(
         The stored directory structure.
 
     """
-    if collection is None:
-        collection = pydatalab.mongo.flask_mongo.db.remoteFilesystems
+    collection = pydatalab.mongo._get_active_mongo_client().get_database().remoteFilesystems
     return collection.find_one({"name": directory["name"]})
