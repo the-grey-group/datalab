@@ -16,6 +16,7 @@ from pydatalab.logger import LOGGER
 def get_directory_structures(
     directories: List[Dict[str, str]],
     invalidate_cache: Optional[bool] = None,
+    parallel: bool = True,
 ) -> List[Dict[str, Any]]:
     """For all registered top-level directories, call tree either
     locally or remotely to get their directory structures, or access
@@ -23,21 +24,28 @@ def get_directory_structures(
 
     Args:
         directories: The directories to scan.
-        invalidate_cache: If `True`, then the cached directory structure will
+        invalidate_cache: If true, then the cached directory structure will
             be reset, provided the cache was not updated very recently. If `False`,
             the cache will not be reset, even if it is older than the maximum configured
             age.
+        parallel: If true, run each remote scraper in a new process.
 
     Returns:
         A lists of dictionaries for each specified top-level directory.
 
     """
-    return multiprocessing.Pool(min(len(directories), 8)).map(
-        functools.partial(
-            get_directory_structure, invalidate_cache=invalidate_cache, fork_safe=True
-        ),
-        directories,
-    )
+    if parallel:
+        return multiprocessing.Pool(min(len(directories), 8)).map(
+            functools.partial(
+                get_directory_structure, invalidate_cache=invalidate_cache, fork_safe=True
+            ),
+            directories,
+        )
+    else:
+        return [
+            get_directory_structure(d, invalidate_cache=invalidate_cache, fork_safe=False)
+            for d in directories
+        ]
 
 
 def get_directory_structure(
