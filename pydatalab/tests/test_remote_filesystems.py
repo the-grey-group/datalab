@@ -123,3 +123,28 @@ def test_get_directory_structure_remote():
         pydatalab.mongo.flask_mongo.db.remoteFilesystems.insert_one(dummy_dir_structure)
         dir_structure = get_directory_structure(test_dir)
         assert dir_structure["last_updated"]
+
+
+def test_scp_escape_spaces():
+    """Test whether the escaping function for scp paths works correctly
+    in edge cases: already-escaped spaces, mixtures etc."""
+    from pydatalab.file_utils import _escape_spaces_scp_path
+
+    assert (
+        _escape_spaces_scp_path(r"ssh://host:path with spaces")
+        == r'ssh://host:"path\ with\ spaces"'
+    )
+    assert (
+        _escape_spaces_scp_path(r"ssh://host:path with spaces/in two places/")
+        == r'ssh://host:"path\ with\ spaces/in\ two\ places/"'
+    )
+    assert (
+        _escape_spaces_scp_path(
+            r"ssh://host:path with spaces/in two places/with\ some already\ escaped"
+        )
+        == r'ssh://host:"path\ with\ spaces/in\ two\ places/with\ some\ already\ escaped"'
+    )
+    assert (
+        _escape_spaces_scp_path(r"ssh://host:path_without_spaces")
+        == r"ssh://host:path_without_spaces"
+    )
