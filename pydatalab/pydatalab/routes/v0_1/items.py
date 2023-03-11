@@ -568,7 +568,7 @@ def save_item():
         )
 
     result = flask_mongo.db.items.update_one(
-        {"item_id": item_id},
+        {"item_id": item_id, **get_default_permissions(user_only=True)},
         {"$set": item},
     )
 

@@ -23,7 +23,8 @@ def get_default_permissions(user_only: bool = True) -> Dict[str, Any]:
         return {}
 
     if (
-        current_user.is_authenticated
+        not user_only
+        and current_user.is_authenticated
         and current_user.person is not None
         and current_user.role == UserRole.ADMIN
     ):
