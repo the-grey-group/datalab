@@ -1,6 +1,8 @@
+import os
 from typing import Any, Callable, Iterable, Tuple
 
 from flask import Response, jsonify
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, HTTPException
 
 
@@ -46,11 +48,26 @@ def render_unauthorised_user_template(exc: UserRegistrationForbidden) -> Tuple[R
     return Response(response=exc.description), exc.code
 
 
-def handle_generic_exception(exc: Exception) -> Tuple[Response, int]:
-    """Return a specific error message and status code if the exception stores them."""
+def handle_pydantic_validation_error(exc: ValidationError) -> Tuple[Response, int]:
+    """Handle pydantic validation errors separately from other exceptions.
+    These always come from malformed data, so should not necessarily trigger the
+    Flask debugger.
+    """
     response = {
         "title": exc.__class__.__name__,
-        "message": exc.args[0] if exc.args else "",
+        "message": str(exc.args[:]) if exc.args else "",
+    }
+    return jsonify(response), 500
+
+
+def handle_generic_exception(exc: Exception) -> Tuple[Response, int]:
+    """Return a specific error message and status code if the exception stores them."""
+    if os.environ.get("FLASK_ENV") == "development":
+        raise exc
+
+    response = {
+        "title": exc.__class__.__name__,
+        "message": str(exc.args) if exc.args else "",
     }
     return jsonify(response), 500
 
@@ -58,5 +75,6 @@ def handle_generic_exception(exc: Exception) -> Tuple[Response, int]:
 ERROR_HANDLERS: Iterable[Tuple[Any, Callable[[Any], Tuple[Response, int]]]] = [
     (UserRegistrationForbidden, render_unauthorised_user_template),
     (HTTPException, handle_http_exception),
+    (ValidationError, handle_pydantic_validation_error),
     (Exception, handle_generic_exception),
 ]
