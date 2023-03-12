@@ -135,7 +135,6 @@ def get_samples():
                         "_id": 0,
                         "item_id": 1,
                         "type": 1,
-                        "creator_ids": 1,
                         "sample_id": 1,
                         "nblocks": {"$size": "$display_order"},
                         "creators": {
