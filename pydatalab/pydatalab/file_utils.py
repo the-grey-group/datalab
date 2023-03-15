@@ -17,6 +17,7 @@ from pydatalab.mongo import get_database
 
 FILE_DIRECTORY = CONFIG.FILE_DIRECTORY
 DIRECTORIES_DICT = {fs["name"]: fs for fs in CONFIG.REMOTE_FILESYSTEMS}
+LIVE_FILE_CUTOFF = datetime.timedelta(days=1)
 
 
 def _escape_spaces_scp_path(remote_path: str) -> str:
@@ -139,6 +140,11 @@ def _check_and_sync_file(file_info: File, file_id: ObjectId) -> File:
         if file_info.location is not None:
             new_stat_results = os.stat(file_info.location)
 
+            # If the file has not been updated in the last cutoff period, do not redownload on every access
+            is_live = True
+            if datetime.datetime.now() - remote_timestamp > LIVE_FILE_CUTOFF:
+                is_live = False
+
             updated_file_info = file_collection.find_one_and_update(
                 {"_id": file_id},
                 {
@@ -146,6 +152,7 @@ def _check_and_sync_file(file_info: File, file_id: ObjectId) -> File:
                         "size": new_stat_results.st_size,
                         "last_modified": datetime.datetime.fromtimestamp(new_stat_results.st_mtime),
                         "last_modified_remote": remote_timestamp,
+                        "is_live": is_live,
                     },
                     "$inc": {"revision": 1},
                 },
