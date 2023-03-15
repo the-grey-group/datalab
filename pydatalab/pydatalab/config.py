@@ -55,7 +55,7 @@ class DeploymentMetadata(BaseModel):
 class ServerConfig(BaseSettings):
     """A model that provides settings for deploying the API."""
 
-    SECRET_KEY: str = Field("dummy key", description="The secret key to use for Flask.")
+    SECRET_KEY: str = Field(os.urandom(12).hex(), description="The secret key to use for Flask.")
 
     MONGO_URI: str = Field(
         "mongodb://localhost:27017/datalabvue",
@@ -138,13 +138,3 @@ class ServerConfig(BaseSettings):
 
 
 CONFIG = ServerConfig()
-
-
-def log_config():
-    """Adds the current server configuration to the log."""
-    from pydatalab.logger import LOGGER
-
-    LOGGER.info("Loaded config with options: %s", CONFIG.dict())
-
-
-log_config()

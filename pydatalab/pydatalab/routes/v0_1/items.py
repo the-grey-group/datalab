@@ -137,7 +137,6 @@ def get_samples():
                         "item_id": 1,
                         "refcode": 1,
                         "type": 1,
-                        "creator_ids": 1,
                         "sample_id": 1,
                         "nblocks": {"$size": "$display_order"},
                         "creators": {
@@ -606,7 +605,7 @@ def save_item():
         )
 
     result = flask_mongo.db.items.update_one(
-        {"item_id": item_id},
+        {"item_id": item_id, **get_default_permissions(user_only=True)},
         {"$set": item},
     )
 

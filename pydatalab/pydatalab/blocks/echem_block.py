@@ -116,16 +116,19 @@ def compute_gpcl_differential(
         cycle_index_array = np.full(len(x), int(cycle_index), dtype=int)
         half_cycle_index_array = np.full(len(x), int(cycle), dtype=int)
 
-        differential_df = differential_df.append(
-            pd.DataFrame(
-                {
-                    x_label: x,
-                    y_label: y,
-                    yp_label: yp,
-                    "full cycle": cycle_index_array,
-                    "half cycle": half_cycle_index_array,
-                }
-            )
+        differential_df = pd.concat(
+            [
+                differential_df,
+                pd.DataFrame(
+                    {
+                        x_label: x,
+                        y_label: y,
+                        yp_label: yp,
+                        "full cycle": cycle_index_array,
+                        "half cycle": half_cycle_index_array,
+                    }
+                ),
+            ]
         )
 
     return differential_df
@@ -285,7 +288,10 @@ class CycleBlock(DataBlock):
             raw_df = self.cache["parsed_file"][file_id]
             raw_df.rename(columns=keys_with_units, inplace=True)
         else:
-            raw_df = ec.echem_file_loader(file_info["location"])
+            try:
+                raw_df = ec.echem_file_loader(file_info["location"])
+            except Exception as exc:
+                raise RuntimeError(f"Navani raised an error when parsing: {exc}") from exc
             cycle_summary_df = ec.cycle_summary(raw_df)
             if "time/s" in raw_df:
                 # temporary. Navani should give "Time" as a standard field in the future.

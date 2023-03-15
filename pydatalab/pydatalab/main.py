@@ -1,7 +1,9 @@
+import datetime
+import logging
 from typing import Any, Dict
 
 from dotenv import dotenv_values
-from flask import Flask, redirect, request, url_for
+from flask import Flask, redirect, request, session, url_for
 from flask_compress import Compress
 from flask_cors import CORS
 from flask_login import current_user, logout_user
@@ -9,7 +11,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 import pydatalab.mongo
 from pydatalab.config import CONFIG
-from pydatalab.logger import logged_route
+from pydatalab.logger import LOGGER, logged_route, setup_log
 from pydatalab.login import LOGIN_MANAGER
 from pydatalab.utils import CustomJSONEncoder
 
@@ -27,6 +29,8 @@ def create_app(config_override: Dict[str, Any] = None) -> Flask:
         The `Flask` app with all associated endpoints.
 
     """
+    setup_log("werkzeug", log_level=logging.INFO)
+    setup_log("", log_level=logging.INFO)
 
     app = Flask(__name__, instance_relative_config=True)
 
@@ -35,6 +39,9 @@ def create_app(config_override: Dict[str, Any] = None) -> Flask:
 
     app.config.update(CONFIG.dict())
     app.config.update(dotenv_values())
+
+    LOGGER.info("Starting app with Flask app.config: %s", app.config)
+    LOGGER.info("Datalab config: %s", CONFIG.dict())
 
     if CONFIG.BEHIND_REVERSE_PROXY:
         # Fix headers for reverse proxied app:
@@ -53,9 +60,9 @@ def create_app(config_override: Dict[str, Any] = None) -> Flask:
     flask_mongo = pydatalab.mongo.flask_mongo
     flask_mongo.init_app(app, connectTimeoutMS=100, serverSelectionTimeoutMS=100)
 
-    LOGIN_MANAGER.init_app(app)
-
     register_endpoints(app)
+
+    LOGIN_MANAGER.init_app(app)
 
     pydatalab.mongo.create_default_indices()
 
@@ -66,6 +73,12 @@ def create_app(config_override: Dict[str, Any] = None) -> Flask:
         """Logs out the local user from the current session."""
         logout_user()
         return redirect(request.environ.get("HTTP_REFERER", "/"))
+
+    @app.before_first_request  # runs before FIRST request (only once)
+    def make_session_permanent():
+        """Make the session permanent so that it doesn't expire on browser close, but instead adds a lifetime."""
+        session.permanent = True
+        app.permanent_session_lifetime = datetime.timedelta(days=1)
 
     @app.route("/")
     def index():
