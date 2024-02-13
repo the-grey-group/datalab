@@ -1,1 +1,3 @@
-__version__ = "0.3.2"
+from importlib.metadata import version
+
+__version__ = version("pydatalab")
