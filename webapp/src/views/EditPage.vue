@@ -177,6 +177,8 @@ export default {
       getItemData(this.item_id).then(() => {
         this.itemDataLoaded = true;
 
+        this.$store.commit("setItemSaved", { item_id: this.item_id, isSaved: true });
+
         // update each block asynchronously
         this.item_data.display_order.forEach((block_id) => {
           console.log(`calling update on block ${block_id}`);
