@@ -290,6 +290,8 @@ export default {
       next();
     } else {
       if (window.confirm("Unsaved changes present. Would you like to leave without saving?")) {
+        // if answer is "yes", then reset the saved warning and go to the new page
+        this.$store.commit("setItemSaved", { item_id: this.item_id, isSaved: true });
         next();
       } else {
         next(false);
