@@ -2,6 +2,7 @@ import datetime
 import json
 from typing import Callable, Dict, List, Optional, Set, Union
 
+import pymongo.errors
 from bson import ObjectId
 from flask import jsonify, request
 from flask_login import current_user
@@ -766,10 +767,21 @@ def save_item():
     item.pop("collections")
     item.pop("creators")
 
-    result = flask_mongo.db.items.update_one(
-        {"item_id": item_id},
-        {"$set": item},
-    )
+    try:
+        result = flask_mongo.db.items.update_one(
+            {"item_id": item_id},
+            {"$set": item},
+        )
+    except pymongo.errors.DocumentTooLarge as exc:
+        LOGGER.critical(f"DocumentTooLarge error:\n{exc}. Block data: {item['blocks_obj']}")
+        return (
+            jsonify(
+                status="error",
+                message=f"Item update failed due to document size error: {exc}",
+                output=str(exc),
+            ),
+            400,
+        )
 
     if result.matched_count != 1:
         return (

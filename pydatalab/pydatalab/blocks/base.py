@@ -1,10 +1,11 @@
 import random
 import warnings
-from typing import Any, Callable, Dict, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, Type
 
-from bson import ObjectId
+from pydantic import BaseModel
 
 from pydatalab.logger import LOGGER
+from pydatalab.models.utils import HumanReadableIdentifier, PyObjectId
 
 __all__ = ("generate_random_id", "DataBlock")
 
@@ -25,32 +26,89 @@ def generate_random_id():
     return "".join(randlist)
 
 
-############################################################################################################
-# Resources (base classes to be extended)
-############################################################################################################
+class BlockMetadata(BaseModel):
+    class Config:
+        extra = "forbid"
+
+
+class BlockDataModel(BaseModel):
+    block_id: str
+    blocktype: str
+    title: str
+    item_id: HumanReadableIdentifier | None = None
+    collection_id: HumanReadableIdentifier | None = None
+    file_id: PyObjectId | None | list[PyObjectId] = None
+    bokeh_plot_data: Any | None = None
+    metadata: BlockMetadata = BlockMetadata()
+    errors: list[str] | None = None
+    warnings: list[str] | None = None
+
+    class Config:
+        validate_assignment = True
+        extra = "forbid"
+
+    def to_db(self):
+        return self.dict(exclude_none=True, exclude={"bokeh_plot_data"})
 
 
 class DataBlock:
-    """base class for a data block."""
+    """Base class for a data block."""
+
+    block_id: str
+    """The unique identifier for the block instance."""
+
+    data_model: Type[BlockDataModel] = BlockDataModel
+
+    data: BlockDataModel
+    """The data model for the block.
+    This is used to store the block's data and metadata in the database.
+    """
 
     blocktype: str = "generic"
-    description: str = "Generic Block"
+    """A unique identifier for the block type.
+    This is used to determine which block class to use when loading from the database.
+    """
+
+    title: str = "Generic Block"
+    """A short title for the block to be used in the UI.
+    This can be overwritten per block instance by the user.
+    """
+
     accepted_file_extensions: Sequence[str]
-    # values that are set by default if they are not supplied by the dictionary in init()
-    defaults: Dict[str, Any] = {}
-    # values cached on the block instance for faster retrieval
-    cache: Optional[Dict[str, Any]] = None
-    plot_functions: Optional[Sequence[Callable[[], None]]] = None
-    # whether this datablock can operate on collection data, or just individual items
+    """List of file extensions that this block can accept."""
+
+    defaults: dict[str, Any] = {}
+    """Used in the class definition to set default values for the block's metadata."""
+
     _supports_collections: bool = False
+    """Whether this block supports being attached to a collection."""
+
+    @property
+    def plot_functions(self) -> Optional[Sequence[Callable[[], None]]]:
+        return None
 
     def __init__(
         self,
-        item_id: Optional[str] = None,
-        collection_id: Optional[str] = None,
-        dictionary=None,
-        unique_id=None,
+        item_id: str | None = None,
+        collection_id: str | None = None,
+        block_id: str | None = None,
+        dictionary: dict[str, Any] | None = None,
     ):
+        """Initalises a block attached to an item or collection.
+
+        If given, the `block_id` will be used as the unique identifier for this block,
+        otherwise one will be generated.
+
+        Will populate the `self.data` with the given defaults and dictionary
+        metadata.
+
+        Parameters:
+            item_id: The unique identifier for the item that this block is attached to.
+            collection_id: The unique identifier for the collection that this block is attached to.
+            block_id: The unique identifier for this block instance.
+            dictionary: A dictionary of data to populate the block with.
+
+        """
         if dictionary is None:
             dictionary = {}
 
@@ -65,34 +123,36 @@ class DataBlock:
         if item_id is not None and collection_id is not None:
             raise RuntimeError("Must provide only one of `item_id` and `collection_id`.")
 
-        # Initialise cache
-        self.cache = {}
-
         LOGGER.debug(
             "Creating new block '%s' associated with item_id '%s'",
             self.__class__.__name__,
             item_id,
         )
-        self.block_id = (
-            unique_id or generate_random_id()
+        self.block_id: str = (
+            block_id or generate_random_id()
         )  # this is supposed to be a unique id for use in html and the database.
-        self.data = {
-            "item_id": item_id,
-            "collection_id": collection_id,
-            "blocktype": self.blocktype,
-            "block_id": self.block_id,
-            **self.defaults,
-        }
 
-        # convert ObjectId file_ids to string to make handling them easier when sending to and from web
-        if "file_id" in self.data:
-            self.data["file_id"] = str(self.data["file_id"])
+        self.data = self.data_model(
+            **{
+                "block_id": self.block_id,
+                "item_id": item_id,
+                "collection_id": collection_id,
+                "blocktype": self.blocktype,
+                "title": self.title,
+            }
+        )
 
-        if "title" not in self.data:
-            self.data["title"] = self.description
-        self.data.update(
-            dictionary
-        )  # this could overwrite blocktype and block_id. I think that's reasonable... maybe
+        for key in self.defaults:
+            setattr(self.data.metadata, key, self.defaults[key])
+
+        if "metadata" in dictionary:
+            metadata = dictionary.pop("metadata")
+            for key in metadata:
+                setattr(self.data.metadata, key, metadata[key])
+
+        for key in dictionary:
+            setattr(self.data, key, dictionary[key])
+
         LOGGER.debug(
             "Initialised block %s for item ID %s or collection ID %s.",
             self.__class__.__name__,
@@ -100,80 +160,59 @@ class DataBlock:
             collection_id,
         )
 
-    def to_db(self):
-        """returns a dictionary with the data for this
-        block, ready to be input into mongodb"""
-
-        LOGGER.debug("Casting block %s to database object.", self.__class__.__name__)
-
-        if "bokeh_plot_data" in self.data:
-            self.data.pop("bokeh_plot_data")
-
-        if "file_id" in self.data:
-            dict_for_db = self.data.copy()  # gross, I know
-            dict_for_db["file_id"] = ObjectId(dict_for_db["file_id"])
-            return dict_for_db
-
-        return self.data
+    def to_db(self) -> dict[str, Any]:
+        """Returns a dictionary with the data to store for this block."""
+        return self.data.to_db()
 
     @classmethod
-    def from_db(cls, db_entry):
-        """create a block from json (dictionary) stored in a db"""
+    def from_db(cls, db_entry: dict[str, Any]) -> "DataBlock":
+        """Create a block from the stored database entry."""
         LOGGER.debug("Loading block %s from database object.", cls.__class__.__name__)
-        new_block = cls(
+        return cls(
             item_id=db_entry.get("item_id"),
             collection_id=db_entry.get("collection_id"),
             dictionary=db_entry,
         )
-        if "file_id" in new_block.data:
-            new_block.data["file_id"] = str(new_block.data["file_id"])
-        return new_block
 
     def to_web(self):
-        """returns a json-able dictionary to render the block on the web"""
+        """Return a JSON representation of the rendered block to serve through the API for use in the UI."""
         if self.plot_functions:
+            self.data.errors = []
+            self.data.warnings = []
             for plot in self.plot_functions:
                 with warnings.catch_warnings(record=True) as captured_warnings:
                     try:
                         plot()
                     except Exception as e:
-                        if "errors" not in self.data:
-                            self.data["errors"] = []
-                        self.data["errors"].append(f"{self.__class__.__name__} raised error: {e}")
+                        self.data.errors.append(f"{self.__class__.__name__} raised error: {e}")
                         LOGGER.warning(
                             f"Could not create plot for {self.__class__.__name__}: {self.data}"
                         )
                     finally:
                         if captured_warnings:
-                            if "warnings" not in self.data:
-                                self.data["warnings"] = []
-                            self.data["warnings"].extend(
+                            if not self.data.warnings:
+                                self.data.warnings = []
+                            self.data.warnings.extend(
                                 [
                                     f"{self.__class__.__name__} raised warning: {w.message}"
                                     for w in captured_warnings
                                 ]
                             )
 
-        return self.data
+        if not self.data.errors:
+            self.data.errors = None
+        if not self.data.warnings:
+            self.data.warnings = None
+
+        return self.data.dict()
 
     @classmethod
-    def from_web(cls, data):
+    def from_web(cls, data: dict[str, Any]) -> "DataBlock":
+        """Create a block from the data received from a web request."""
         LOGGER.debug("Loading block %s from web request.", cls.__class__.__name__)
-        block = cls(
+        return cls(
             item_id=data.get("item_id"),
             collection_id=data.get("collection_id"),
-            unique_id=data["block_id"],
+            block_id=data["block_id"],
+            dictionary=data,
         )
-        block.update_from_web(data)
-        return block
-
-    def update_from_web(self, data):
-        """update the object with data received from the website. Only updates fields
-        that are specified in the dictionary- other fields are left alone"""
-        LOGGER.debug(
-            "Updating block %s from web request",
-            self.__class__.__name__,
-        )
-        self.data.update(data)
-
-        return self
