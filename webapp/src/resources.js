@@ -1,5 +1,5 @@
 // Resources for the application
-import DataBlockBase from "@/components/datablocks/DataBlockBase";
+import GenericBlock from "@/components/datablocks/GenericBlock";
 import MediaBlock from "@/components/datablocks/MediaBlock";
 import XRDBlock from "@/components/datablocks/XRDBlock";
 import ChatBlock from "@/components/datablocks/ChatBlock";
@@ -41,10 +41,30 @@ export const UPPY_MAX_NUMBER_OF_FILES =
     ? process.env.VUE_APP_UPPY_MAX_NUMBER_OF_FILES
     : 10000;
 
+export const blockTypeComponentMap = {
+  comment: GenericBlock,
+  media: MediaBlock,
+  xrd: XRDBlock,
+  raman: RamanBlock,
+  cycle: CycleBlock,
+  eis: EISBlock,
+  nmr: NMRBlock,
+  ms: MassSpecBlock,
+  chat: ChatBlock,
+};
+
+//for (const b in serverBlockTypes) {
+//  if (b.id in blockTypeComponentMap) {
+//    continue;
+//  } else {
+//    blockTypeComponentMap[b.id] = GenericBlock;
+//  }
+//}
+
 export const debounceTime = 250; // time after user stops typing before request is sent
 
 export const blockTypes = {
-  comment: { name: "Comment", component: DataBlockBase },
+  comment: { name: "Comment", component: GenericBlock },
   media: { name: "Media", component: MediaBlock },
   xrd: { name: "Powder XRD", component: XRDBlock },
   raman: { name: "Raman", component: RamanBlock },
