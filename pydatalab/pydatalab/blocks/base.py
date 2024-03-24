@@ -2,7 +2,9 @@ import random
 import warnings
 from typing import Any, Callable, Dict, Optional, Sequence
 
+import bokeh.embed
 from bson import ObjectId
+from pydantic import BaseModel
 
 from pydatalab.logger import LOGGER
 
@@ -30,29 +32,79 @@ def generate_random_id():
 ############################################################################################################
 
 
-class DataBlock:
-    """base class for a data block."""
+class DataBlockParameter(BaseModel):
+    type: Literal["number", "string"]
+    editable: bool
+    required: bool
+    label: str
+    default: float | str
+    description: str
 
-    blocktype: str = "generic"
-    description: str = "Generic Block"
+
+class DataBlockInput(BaseModel):
+    type: Literal["file", "string", "number"]
+    label: str
+    multiplicity: int | Literal["*"]
+    parameters: Optional[dict[str, DataBlockParameter]]
+
+
+class DataBlockView(BaseModel):
+    type: type[dict, bokeh.embed.standalone.StandaloneEmbedJson]
+
+
+class DataBlockUITemplate(BaseModel):
+    """A DSL for templating the datablock UI."""
+
+    inputs: dict[str, DataBlockInput] | None
+    view: dict[str, DataBlockView] | None
+    parameters: dict[str, DataBlockParameter] | None
+
+
+class DataBlock:
+    """Base class for a data block."""
+
+    name: str
+    """The human-readable block name, specifying which technique or file it pertains to, e.g., 'Powder XRD'."""
+    blocktype: str
+    """A short string specifying the block type, e.g., `xrd`, `nmr`."""
+    description: str
+    """A longer description outlining what the block can do."""
+
     accepted_file_extensions: Sequence[str]
-    # values that are set by default if they are not supplied by the dictionary in init()
+    """A list of file path suffixes that this block will attempt to read."""
+
     defaults: Dict[str, Any] = {}
-    # values cached on the block instance for faster retrieval
+    """Any default values that should be set if they are not supplied by the dictionary in init()."""
+
     cache: Optional[Dict[str, Any]] = None
+    """Any values cached on the block instance for faster retrieval."""
+
     plot_functions: Optional[Sequence[Callable[[], None]]] = None
-    # whether this datablock can operate on collection data, or just individual items
+    """A list of functions that can be called to generate plots for this block."""
+
+    ui_template: DataBlockUITemplate | None = None
+
     _supports_collections: bool = False
+    """Whether this datablock can operate on collection data, or just individual items"""
 
     def __init__(
         self,
         item_id: Optional[str] = None,
         collection_id: Optional[str] = None,
-        dictionary=None,
-        unique_id=None,
+        init_data: Optional[dict] = None,
+        unique_id: Optional[str] = None,
     ):
-        if dictionary is None:
-            dictionary = {}
+        """Create a data block object for the given `item_id` or `collection_id`.
+
+        Parameters:
+            item_id: The item to which the block is attached, or
+            collection_id: The collection to which the block is attached.
+            init_data: A dictionary of data to initialise the block with.
+            unique_id: A unique id for the block, used in the DOM and database.
+
+        """
+        if init_data is None:
+            init_data = {}
 
         if item_id is None and not self._supports_collections:
             raise RuntimeError(f"Must supply `item_id` to make {self.__class__.__name__}.")
@@ -89,9 +141,9 @@ class DataBlock:
             self.data["file_id"] = str(self.data["file_id"])
 
         if "title" not in self.data:
-            self.data["title"] = self.description
+            self.data["title"] = self.name
         self.data.update(
-            dictionary
+            init_data
         )  # this could overwrite blocktype and block_id. I think that's reasonable... maybe
         LOGGER.debug(
             "Initialised block %s for item ID %s or collection ID %s.",
@@ -114,6 +166,9 @@ class DataBlock:
             dict_for_db["file_id"] = ObjectId(dict_for_db["file_id"])
             return dict_for_db
 
+        if "bokeh_plot_data" in self.data:
+            self.data.pop("bokeh_plot_data")
+
         return self.data
 
     @classmethod
@@ -123,10 +178,14 @@ class DataBlock:
         new_block = cls(
             item_id=db_entry.get("item_id"),
             collection_id=db_entry.get("collection_id"),
-            dictionary=db_entry,
+            init_data=db_entry,
         )
         if "file_id" in new_block.data:
             new_block.data["file_id"] = str(new_block.data["file_id"])
+
+        if new_block.data.get("title", "") == new_block.description:
+            new_block.data["title"] = new_block.name
+
         return new_block
 
     def to_web(self) -> Dict[str, Any]:
@@ -156,6 +215,9 @@ class DataBlock:
             self.data["errors"] = block_errors
         if block_warnings:
             self.data["warnings"] = block_warnings
+
+        if self.ui_template:
+            return {self.data[k] for k in self.data if k in self.ui_template.view}
 
         return self.data
 
