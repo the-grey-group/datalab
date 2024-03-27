@@ -74,6 +74,45 @@ def dereference_files(file_ids: List[Union[str, ObjectId]]) -> Dict[str, Dict]:
     return results
 
 
+def get_equipment_summary():
+    if not current_user.is_authenticated and not CONFIG.TESTING:
+        return (
+            jsonify(
+                status="error",
+                message="Authorization required to access equipment list.",
+            ),
+            401,
+        )
+
+    _project = {
+        "_id": 0,
+        "item_id": 1,
+        "name": 1,
+        "type": 1,
+        "date": 1,
+        "refcode": 1,
+        "location": 1,
+    }
+
+    items = [
+        doc
+        for doc in flask_mongo.db.items.aggregate(
+            [
+                {
+                    "$match": {
+                        "type": "equipment",
+                    }
+                },
+                {"$project": _project},
+            ]
+        )
+    ]
+    return jsonify({"status": "success", "items": items})
+
+
+get_equipment_summary.methods = ("GET",)  # type: ignore
+
+
 def get_starting_materials():
     if not current_user.is_authenticated and not CONFIG.TESTING:
         return (
@@ -424,8 +463,9 @@ def _create_sample(
     # new_sample = {k: sample_dict[k] for k in schema["properties"] if k in sample_dict}
     new_sample = sample_dict
 
-    if type == "starting_materials":
-        # starting_materials are open to all in the deploment at this point, so no creators are assigned
+    if type in ("starting_materials", "equipment"):
+        # starting_materials and equipment are open to all in the deploment at this point,
+        # so no creators are assigned
         new_sample["creator_ids"] = []
         new_sample["creators"] = []
     elif CONFIG.TESTING:
@@ -497,29 +537,36 @@ def _create_sample(
             400,
         )
 
+    sample_list_entry = {
+        "refcode": data_model.refcode,
+        "item_id": data_model.item_id,
+        "nblocks": 0,
+        "date": data_model.date,
+        "name": data_model.name,
+        "creator_ids": data_model.creator_ids,
+        # TODO: This workaround for creators & collections is still gross, need to figure this out properly
+        "creators": [json.loads(c.json(exclude_unset=True)) for c in data_model.creators]
+        if data_model.creators
+        else [],
+        "collections": [
+            json.loads(c.json(exclude_unset=True, exclude_none=True))
+            for c in data_model.collections
+        ]
+        if data_model.collections
+        else [],
+        "type": data_model.type,
+    }
+
+    # hack to let us use _create_sample() for equipment too. We probably want to make
+    # a more general create_item() to more elegantly handle different returns.
+    if data_model.type == "equipment":
+        sample_list_entry["location"] = data_model.location
+
     data = (
         {
             "status": "success",
             "item_id": data_model.item_id,
-            "sample_list_entry": {
-                "refcode": data_model.refcode,
-                "item_id": data_model.item_id,
-                "nblocks": 0,
-                "date": data_model.date,
-                "name": data_model.name,
-                "creator_ids": data_model.creator_ids,
-                # TODO: This workaround for creators & collections is still gross, need to figure this out properly
-                "creators": [json.loads(c.json(exclude_unset=True)) for c in data_model.creators]
-                if data_model.creators
-                else [],
-                "collections": [
-                    json.loads(c.json(exclude_unset=True, exclude_none=True))
-                    for c in data_model.collections
-                ]
-                if data_model.collections
-                else [],
-                "type": data_model.type,
-            },
+            "sample_list_entry": sample_list_entry,
         },
         201,  # 201: Created
     )
@@ -885,6 +932,7 @@ def search_users():
 ENDPOINTS: Dict[str, Callable] = {
     "/samples/": get_samples,
     "/starting-materials/": get_starting_materials,
+    "/equipment/": get_equipment_summary,
     "/search-items/": search_items,
     "/search-users/": search_users,
     "/new-sample/": create_sample,
