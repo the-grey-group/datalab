@@ -2,7 +2,8 @@ import json
 import os
 from typing import Sequence
 
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 
 # from langchain.chat_models import ChatOpenAI
 from pydatalab.blocks.base import DataBlock
@@ -10,11 +11,13 @@ from pydatalab.logger import LOGGER
 from pydatalab.models import ITEM_MODELS
 from pydatalab.utils import CustomJSONEncoder
 
+# claude-3-haiku-20240229
+
 __all__ = "ChatBlock"
-MODEL = "gpt-3.5-turbo-0613"
+MODEL = "claude-3-sonnet-20240229"
 MAX_CONTEXT_SIZE = 4097
 
-# openai_client = ChatOpenAI(api_key=os.environ.get("OPENAI_API_KEY"), model=MODEL)
+# claude_client = ChatAnthropic(anthropic_api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL)
 
 
 class ChatBlock(DataBlock):
@@ -34,7 +37,9 @@ class ChatBlock(DataBlock):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.openai_client = ChatOpenAI(api_key=os.environ.get("OPENAI_API_KEY"), model=MODEL)
+        self.claude_client = ChatAnthropic(
+            anthropic_api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL
+        )
 
     def to_db(self):
         """returns a dictionary with the data for this
@@ -63,7 +68,7 @@ class ChatBlock(DataBlock):
                 {
                     "role": "user",
                     "content": f"""Here is the JSON data for the current item(s): {info_json}.
-Start with a friendly introduction and give me a one sentence summary of what this is (not detailed, no information about specific masses). """,
+                    Start with a friendly introduction and give me a one sentence summary of what this is (not detailed, no information about specific masses). """,
                 },
             ]
 
@@ -85,7 +90,7 @@ Start with a friendly introduction and give me a one sentence summary of what th
 
         try:
             LOGGER.debug(
-                f"submitting request to OpenAI API for completion with last message role \"{self.data['messages'][-1]['role']}\" (message = {self.data['messages'][-1:]}). Temperature = {self.data['temperature']} (type {type(self.data['temperature'])})"
+                f"submitting request to Claude API for completion with last message role \"{self.data['messages'][-1]['role']}\" (message = {self.data['messages'][-1:]}). Temperature = {self.data['temperature']} (type {type(self.data['temperature'])})"
             )
             from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -99,7 +104,7 @@ Start with a friendly introduction and give me a one sentence summary of what th
                 else:
                     langchain_messages.append(AIMessage(content=message["content"]))
 
-            token_count = self.openai_client.get_num_tokens_from_messages(langchain_messages)
+            token_count = self.claude_client.get_num_tokens_from_messages(langchain_messages)
 
             self.data["token_count"] = token_count
 
@@ -109,12 +114,12 @@ Start with a friendly introduction and give me a one sentence summary of what th
                 ] = f"""This conversation has reached its maximum context size and the chatbot won't be able to respond further ({token_count} tokens, max: {MAX_CONTEXT_SIZE}). Please make a new chat block to start fresh."""
                 return
 
-            # Call the OpenAI client with the invoke method
-            response = self.openai_client.invoke(langchain_messages)
+            # Call the Claude client with the invoke method
+            response = self.claude_client.invoke(langchain_messages)
 
             langchain_messages.append(response)
 
-            token_count = self.openai_client.get_num_tokens_from_messages(langchain_messages)
+            token_count = self.claude_client.get_num_tokens_from_messages(langchain_messages)
 
             self.data["token_count"] = token_count
 
@@ -122,8 +127,8 @@ Start with a friendly introduction and give me a one sentence summary of what th
 
             self.data["error_message"] = None
         except Exception as exc:
-            LOGGER.debug("Received an error from OpenAI API: %s", exc)
-            self.data["error_message"] = f"Received an error from the OpenAi API: {exc}."
+            LOGGER.debug("Received an error from Claude API: %s", exc)
+            self.data["error_message"] = f"Received an error from the Claude API: {exc}."
             return
 
     def _prepare_item_json_for_chat(self, item_id: str):
