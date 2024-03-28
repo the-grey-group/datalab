@@ -1,5 +1,5 @@
 // Resources for the application
-import DataBlockBase from "@/components/datablocks/DataBlockBase";
+import GenericBlock from "@/components/datablocks/GenericBlock";
 import MediaBlock from "@/components/datablocks/MediaBlock";
 import XRDBlock from "@/components/datablocks/XRDBlock";
 import ChatBlock from "@/components/datablocks/ChatBlock";
@@ -41,18 +41,38 @@ export const UPPY_MAX_NUMBER_OF_FILES =
     ? process.env.VUE_APP_UPPY_MAX_NUMBER_OF_FILES
     : 10000;
 
+export const blockTypeComponentMap = {
+  comment: GenericBlock,
+  media: MediaBlock,
+  xrd: XRDBlock,
+  raman: RamanBlock,
+  cycle: CycleBlock,
+  eis: EISBlock,
+  nmr: NMRBlock,
+  ms: MassSpecBlock,
+  chat: ChatBlock,
+};
+
+//for (const b in serverBlockTypes) {
+//  if (b.id in blockTypeComponentMap) {
+//    continue;
+//  } else {
+//    blockTypeComponentMap[b.id] = GenericBlock;
+//  }
+//}
+
 export const debounceTime = 250; // time after user stops typing before request is sent
 
 export const blockTypes = {
-  comment: { description: "Comment", component: DataBlockBase },
-  media: { description: "Media", component: MediaBlock },
-  xrd: { description: "Powder XRD", component: XRDBlock },
-  raman: { description: "Raman", component: RamanBlock },
-  cycle: { description: "Electrochemistry", component: CycleBlock },
-  eis: { description: "EIS", component: EISBlock },
-  nmr: { description: "NMR", component: NMRBlock },
-  ms: { description: "Mass spectrometry", component: MassSpecBlock },
-  chat: { description: "Virtual assistant", component: ChatBlock },
+  comment: { name: "Comment", component: GenericBlock },
+  media: { name: "Media", component: MediaBlock },
+  xrd: { name: "Powder XRD", component: XRDBlock },
+  raman: { name: "Raman", component: RamanBlock },
+  cycle: { name: "Electrochemistry", component: CycleBlock },
+  eis: { name: "EIS", component: EISBlock },
+  nmr: { name: "NMR", component: NMRBlock },
+  ms: { name: "Mass spectrometry", component: MassSpecBlock },
+  chat: { name: "Virtual assistant", component: ChatBlock },
 };
 
 export const itemTypes = {
