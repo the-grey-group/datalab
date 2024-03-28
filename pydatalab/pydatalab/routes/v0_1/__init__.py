@@ -10,6 +10,7 @@ from .healthcheck import ENDPOINTS as healthcheck_endpoints
 from .info import ENDPOINTS as info_endpoints
 from .items import ENDPOINTS as items_endpoints
 from .remotes import remote
+from .roles import role
 from .users import user
 
 ENDPOINTS: Dict[str, Callable] = {
@@ -22,6 +23,6 @@ ENDPOINTS: Dict[str, Callable] = {
     **info_endpoints,
 }
 
-BLUEPRINTS = [collection, remote, user]
+BLUEPRINTS = [collection, remote, user, role]
 
 __all__ = ("ENDPOINTS", "BLUEPRINTS", "__api_version__")
