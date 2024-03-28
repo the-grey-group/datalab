@@ -14,16 +14,15 @@ from pydatalab.utils import CustomJSONEncoder
 # claude-3-haiku-20240229
 
 __all__ = "ChatBlock"
-MODEL = "claude-3-sonnet-20240229"
 MAX_CONTEXT_SIZE = 4097
-
-# claude_client = ChatAnthropic(anthropic_api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL)
 
 
 class ChatBlock(DataBlock):
     blocktype = "chat"
     description = "Virtual assistant"
     accepted_file_extensions: Sequence[str] = []
+    ChatClient = None
+
     __supports_collections = True
     defaults = {
         "system_prompt": """You are whinchat (lowercase w), a virtual data managment assistant that helps materials chemists manage their experimental data and plan experiments. You are deployed in the group of Professor Clare Grey in the Department of Chemistry at the University of Cambridge.
@@ -33,13 +32,15 @@ class ChatBlock(DataBlock):
         """,
         "temperature": 0.2,
         "error_message": None,
+        "model": "claude-3-sonnet-20240229",
+        "available_models": [
+            "claude-3-sonnet-20240229",
+            "claude-3-opus-20240229",
+        ],
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.claude_client = ChatAnthropic(
-            anthropic_api_key=os.environ["ANTHROPIC_API_KEY"], model=MODEL
-        )
 
     def to_db(self):
         """returns a dictionary with the data for this
@@ -89,6 +90,15 @@ class ChatBlock(DataBlock):
                 return
 
         try:
+            if self.data["model"][:6] == "claude":
+                LOGGER.warning(f"initializing chatblock with model: {self.data['model']}")
+                self.ChatClient = ChatAnthropic(
+                    anthropic_api_key=os.environ["ANTHROPIC_API_KEY"],
+                    model=self.data["model"],
+                )
+                # else if self.data["model"] is "openai-gpt-3.5":
+                #     self.ChatClient = ChatOpenAI(open_ai_api_key="")
+
             LOGGER.debug(
                 f"submitting request to Claude API for completion with last message role \"{self.data['messages'][-1]['role']}\" (message = {self.data['messages'][-1:]}). Temperature = {self.data['temperature']} (type {type(self.data['temperature'])})"
             )
@@ -104,7 +114,7 @@ class ChatBlock(DataBlock):
                 else:
                     langchain_messages.append(AIMessage(content=message["content"]))
 
-            token_count = self.claude_client.get_num_tokens_from_messages(langchain_messages)
+            token_count = self.ChatClient.get_num_tokens_from_messages(langchain_messages)
 
             self.data["token_count"] = token_count
 
@@ -115,11 +125,11 @@ class ChatBlock(DataBlock):
                 return
 
             # Call the Claude client with the invoke method
-            response = self.claude_client.invoke(langchain_messages)
+            response = self.ChatClient.invoke(langchain_messages)
 
             langchain_messages.append(response)
 
-            token_count = self.claude_client.get_num_tokens_from_messages(langchain_messages)
+            token_count = self.ChatClient.get_num_tokens_from_messages(langchain_messages)
 
             self.data["token_count"] = token_count
 
