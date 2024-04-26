@@ -4,52 +4,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
-Flask = "~=3.0"
-Flask-Cors = "*"
-Flask-Dance = "*"
-Flask-Login = "*"
-Flask-PyMongo = "*"
-Flask-Mail = "*"
-Werkzeug = "~=3.0"
-bokeh = "<3"
-pandas = "*"
-scipy = "*"
-matplotlib = "*"
-pymongo = "*"
-openpyxl = "*"
-nmrglue = "*"
-python-dotenv = "*"
-pydantic = {extras = ["email"], version = "<2.0"}
-blinker = "*"
-pint = "*"
-periodictable = "*"
-flask-compress = "*"
-pillow = "*"
-tiktoken = "*"
-galvani = "~= 0.4"
-navani = {git = "git+https://github.com/the-grey-group/navani.git@v0.1.5"}
-NewareNDA = ">= 2024"
-python-dateutil = "*"
-pybaselines = "*"
-rosettasciio = "~= 0.3, < 0.4"
-pyjwt = "*"
-invoke = "*"
-paramiko = "*"
-langchain = "*"
-langchain-openai = "*"
-langchain-anthropic = "*"
-transformers = "*"
+datalab-server = {path = ".", extras = ["all"]}
 
 [dev-packages]
-pytest = "*"
-pytest-cov = "*"
-pytest-dependency = "*"
-pre-commit = "*"
-mongomock = "*"
-mkdocs = "*"
-mkdocs-material = "*"
-mkdocstrings = { version = "*", extras = ["python-legacy"] }
-mkdocs-awesome-pages-plugin = "*"
+datalab-server = {path = ".", extras = ["dev"]}
 
 [requires]
 python_version = "3"
