@@ -6,7 +6,7 @@ WORKDIR /app
 
 EXPOSE 8081
 
-COPY webapp/package.json webapp/yarn.lock ./
+COPY webapp/.prettierrc webapp/package.json webapp/yarn.lock ./
 
 # Using a custom node_modules location to avoid mounting it outside of docker
 RUN --mount=type=cache,target=/root/.cache/yarn yarn install --frozen-lockfile --modules-folder /node_modules
