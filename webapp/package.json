@@ -24,6 +24,7 @@
     "@vue/cli": "^5.0.8",
     "@vueuse/components": "^10.7.2",
     "@vueuse/core": "^10.7.2",
+    "ag-grid-vue3": "^31.3.2",
     "bootstrap": "^4.5.3",
     "core-js": "^3.6.5",
     "crypto-browserify": "^3.12.0",
