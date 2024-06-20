@@ -4,27 +4,6 @@
       Server Error. Sample list not retreived.
     </div>
 
-    <div class="form-inline mb-2 ml-auto">
-      <button
-        class="btn btn-default ml-auto mr-2"
-        :disabled="!Boolean(itemsSelected.length)"
-        @click="deleteSelectedItems"
-      >
-        Delete selected...
-      </button>
-      <div class="form-group">
-        <label for="sample-table-search" class="sr-only">Search items</label>
-        <input
-          id="sample-table-search"
-          type="text"
-          class="form-control"
-          v-model="searchValue"
-          placeholder="search"
-          @input="applyFilter"
-        />
-      </div>
-    </div>
-
     <ag-grid-vue
       class="ag-theme-alpine customize-table"
       :columnDefs="columnDefs"
@@ -61,20 +40,30 @@ export default {
           headerName: "ID",
           field: "item_id",
           checkboxSelection: true,
-          headerCheckboxSelection: true, // Allow header checkbox to select/deselect all rows
-          sortable: true,
-          filter: true,
-          floatingFilter: true,
+          headerCheckboxSelection: true,
+          // floatingFilter: true,
+          flex: 2,
         },
-        { headerName: "Type", field: "type" },
-        { headerName: "Sample name", field: "name" },
-        { headerName: "Formula", field: "chemform" },
-        { headerName: "Date", field: "date" },
-        { headerName: "Collection", field: "collection" },
-        { headerName: "Creators", field: "creators" },
-        { headerName: "# of blocks", field: "nblocks" },
+        { headerName: "Type", field: "type", flex: 1 },
+        { headerName: "Sample name", field: "name", flex: 1 },
+        { headerName: "Formula", field: "chemform", flex: 1 },
+        {
+          headerName: "Date",
+          field: "date",
+          flex: 1,
+          valueFormatter: (params) => {
+            const date = new Date(params.value);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          },
+        },
+        { headerName: "Collection", field: "collection", flex: 1 },
+        { headerName: "Creators", field: "creators", flex: 1 },
+        { headerName: "# of blocks", field: "nblocks", flex: 1 },
       ],
-      rowSelection: "multiple", // Enable multiple row selection
+      rowSelection: "multiple",
       defaultColDef: {
         resizable: true,
         sortable: true,
