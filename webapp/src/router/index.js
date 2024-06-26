@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import Samples from "../views/Samples.vue";
 import Equipment from "../views/Equipment.vue";
 import SamplesNext from "../views/SamplesNext.vue";
+import SampleAgGrid from "../views/SampleAgGrid.vue";
 import StartingMaterials from "../views/StartingMaterials.vue";
 import StartingMaterialsNext from "../views/StartingMaterialsNext.vue";
 import Collections from "@/views/Collections.vue";
@@ -33,6 +34,7 @@ const routes = [
     component: Equipment,
   },
   { path: "/next/samples", name: "samples-next", alias: "/next", component: SamplesNext },
+  { path: "/aggrid/samples", name: "samples-aggrid", alias: "/aggrid", component: SampleAgGrid },
   {
     path: "/edit/:id",
     name: "edit",
