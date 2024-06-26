@@ -12,7 +12,7 @@
       @rowClicked="goToEditPage"
       @selectionChanged="onSelectionChanged"
       :pagination="true"
-      :paginationPageSize="10"
+      :paginationPageSize="4"
       :domLayout="'autoHeight'"
       :defaultColDef="defaultColDef"
       style="width: 100%; height: 400px"
@@ -28,7 +28,8 @@ import { getSampleList, deleteSample } from "@/server_fetch_utils.js";
 import FormattedItemName from "@/components/FormattedItemName";
 import ChemicalFormula from "@/components/ChemicalFormula";
 import CollectionList from "@/components/CollectionList";
-import Creators from "@/components/Creators";
+// import Creators from "@/components/Creators";
+import Test from "@/components/Test";
 import { h, getCurrentInstance } from "vue";
 
 const FormattedItemNameAg = {
@@ -71,7 +72,7 @@ const CreatorsAg = {
   setup(props) {
     const { params } = props;
     return () =>
-      h(Creators, {
+      h(Test, {
         creators: params.value,
       });
   },
@@ -82,6 +83,8 @@ export default {
     AgGridVue,
     // eslint-disable-next-line
     FormattedItemNameAg,
+    // eslint-disable-next-line
+    FormattedItemName,
     // eslint-disable-next-line
     ChemicalFormulaAg,
     // eslint-disable-next-line
@@ -104,7 +107,7 @@ export default {
           checkboxSelection: true,
           headerCheckboxSelection: true,
           // floatingFilter: true,
-          flex: 2,
+          flex: 1,
         },
         { headerName: "Type", field: "type", flex: 1 },
         { headerName: "Sample name", field: "name", flex: 1 },
@@ -120,7 +123,7 @@ export default {
           field: "collections",
           cellRenderer: "CollectionListAg",
           valueFormatter: (params) => {
-            return Object.values(params.value);
+            return params.value;
           },
           flex: 1,
         },
@@ -129,7 +132,7 @@ export default {
           field: "creators",
           cellRenderer: "CreatorsAg",
           valueFormatter: (params) => {
-            return Object.values(params.value);
+            return params.value;
           },
           flex: 1,
         },
