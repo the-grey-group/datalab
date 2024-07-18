@@ -30,6 +30,6 @@ module.exports = {
     "cypress/no-assigning-return-values": "warn",
     "cypress/no-unnecessary-waiting": "warn",
     "cypress/unsafe-to-chain-command": "warn",
-    "prettier/prettier": "error",
+    "prettier/prettier": "warn",
   },
 };
