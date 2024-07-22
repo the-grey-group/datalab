@@ -63,24 +63,18 @@ server = [
     "Flask-Cors",
     "Flask-Dance",
     "Flask-PyMongo",
-    "Flask-Mail",
+    "Flask-Mail ~= 0.9",
     "Flask-Compress",
     "Werkzeug ~= 3.0",
     "pandas[excel] ~= 2.2",
-    "scipy ~= 1.13",
     "matplotlib ~= 3.8",
-    "nmrglue",
     "python-dotenv",
     "blinker",  # not sure if needed anymore,
     "pint",
     "periodictable",
     "pillow",
-    "tiktoken", # not sure if needed
-    "galvani ~= 0.4",
-    "NewareNDA >= 2024",
     "python-dateutil",
     "pybaselines",
-    "rosettasciio ~= 0.3, < 0.4",
     "pyjwt",
     "invoke",
     "paramiko",
@@ -88,7 +82,7 @@ server = [
 
 apps = [
     # General
-    "scipy ~= 1.11",
+    "scipy ~= 1.13",
     # NMR
     "nmrglue ~= 0.10",
     # Electrochemistry
@@ -102,10 +96,11 @@ apps = [
 ]
 
 chat = [
-    "langchain ~= 0.1",
+    "langchain == 0.2.6",
     "langchain-openai ~= 0.1",
     "langchain-anthropic ~= 0.1",
-    "transformers ~= 4.40"
+    "tiktoken ~= 0.7",
+    "transformers ~= 4.42"
 ]
 
 
