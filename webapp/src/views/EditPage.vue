@@ -137,7 +137,8 @@ export default {
   },
   data() {
     return {
-      item_id: this.$route.params.id,
+      item_id: this.$route.params?.id || null,
+      refcode: this.$route.params?.refcode || null,
       itemDataLoaded: false,
       isMenuDropdownVisible: false,
       selectedRemoteFiles: [],
@@ -203,7 +204,6 @@ export default {
   },
   beforeMount() {
     this.blockTypes = blockTypes; // bind blockTypes as a NON-REACTIVE object to the this context so that it is accessible by the template.
-    this.itemApiUrl = API_URL + "/get-item-data/" + this.item_id;
   },
   mounted() {
     // overwrite ctrl-s and cmd-s to save the page
@@ -277,16 +277,26 @@ export default {
       this.lastModified = "just now";
     },
     getSampleData() {
-      getItemData(this.item_id).then(() => {
-        this.itemDataLoaded = true;
-
-        // update each block asynchronously
-        this.item_data.display_order.forEach((block_id) => {
-          console.log(`calling update on block ${block_id}`);
-          updateBlockFromServer(this.item_id, block_id, this.item_data.blocks_obj[block_id]);
+      if (this.item_id != null) {
+        getItemByRefcode(this.refcode).then(() => {
+          this.itemDataLoaded = true;
+          this.item_id = this.item_data.item_id;
+          this.itemApiUrl = API_URL + "/items/by-refcode/" + this.refcode;
         });
-        this.setLastModified();
+      } else {
+        getItemData(this.item_id).then(() => {
+          this.itemDataLoaded = true;
+          this.refcode = this.item_data.refcode;
+          this.itemApiUrl = API_URL + "/items/by-refcode/" + this.refcode;
+        });
+      }
+
+      // update each block asynchronously
+      this.item_data.display_order.forEach((block_id) => {
+        console.log(`calling update on block ${block_id}`);
+        updateBlockFromServer(this.item_id, block_id, this.item_data.blocks_obj[block_id]);
       });
+      this.setLastModified();
     },
     leavePageWarningListener(event) {
       event.preventDefault;
