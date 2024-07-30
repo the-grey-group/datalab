@@ -30,8 +30,6 @@ The instructions in this section will leave you with a running JSON API on your 
 This can hypothetically be used entirely independently from the web front-end.
 
 1. Install `pipenv` on your machine (optional).
-    - Detailed instructions for installing `pipenv`, `pip` and Python itself can be found on the [`pipenv` website](https://pipenv.pypa.io/en/latest/install/#installing-pipenv).
-1. Install `pipenv` on your machine (optional).
     - Detailed instructions for installing `pipenv`, `pip` and Python itself can be found on the [`pipenv` website](https://pipenv.pypa.io/en/latest/install/#installing-pipenv). You will need Python 3.10 or higher to run pydatalab.
     - We recommend you install `pipenv` from PyPI (with `pip install pipenv` or `pip install --user pipenv`) for the Python distribution of your choice (in a virtual environment or otherwise). `pipenv` will be used to create its own virtual environment for installation of the `pydatalab` package.
 1. Set up MongoDB.
