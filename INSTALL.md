@@ -2,13 +2,19 @@
 
 *datalab* is intended to be deployed on a persistent server accessible on the web that can act as a data management platform
 for a group of researchers.
+
+You may personally be looking for how to interact with an existing *datalab*
+instance, in which case please check out the separate Python API package at
+[datalab-org/datalab-api](https://github.com/datalab-org/datalab-python-api).
+
+
 The instructions below outline how to make a development installation on your local machine.
 We strongly recommend following the [deployment instructions](deployment.md) (or [here](https://the-datalab.readthedocs.io/en/latest/deployment) if you are reading this directly on GitHub) if you are deploying for use in production; these instructions may also be useful for developers who want to use Docker to create a reproducible development environment.
 
 This repository consists of two components:
 
 - a Flask-based Python web server (`pydatalab`) that communicates with the database backend
-- a JavaScript+Vue web application for the user interface.
+- a Vue.js web application for the user interface.
 
 `pydatalab` can in principle be used without the web app frontend through its JSON API.
 
@@ -21,9 +27,9 @@ Firstly, from the desired folder, clone this repository from GitHub to your loca
 ### `pydatalab` server installation
 
 The instructions in this section will leave you with a running JSON API on your host machine.
-This can hypothetically be used entirely independently from the web front-end through the JSON API.
+This can hypothetically be used entirely independently from the web front-end.
 
-1. Install `pipenv` on your machine.
+1. Install `pipenv` on your machine (optional).
     - Detailed instructions for installing `pipenv`, `pip` and Python itself can be found on the [`pipenv` website](https://pipenv.pypa.io/en/latest/install/#installing-pipenv). You will need Python 3.10 or higher to run pydatalab.
     - We recommend you install `pipenv` from PyPI (with `pip install pipenv` or `pip install --user pipenv`) for the Python distribution of your choice (in a virtual environment or otherwise). `pipenv` will be used to create its own virtual environment for installation of the `pydatalab` package.
 1. Set up MongoDB.
@@ -34,11 +40,12 @@ This can hypothetically be used entirely independently from the web front-end th
         - For persistence, you will need to set up MongoDB to run as a service on your computer (or run manually each time you run the `pydatalab` server).
     1. In MongoDB, create a database called "datalabvue" ([further instructions on the MongoDB website](https://www.mongodb.com/basics/create-database)).
         - You can do this with the `mongo` shell (`echo "use datalabvue" | mongo`) or with Compass.
-1. Install the `pydatalab` dependencies.
-    1. Navigate to the `datalab/pydatalab` folder and run `pipenv install`.
+1. Install the `pydatalab` package.
+    - If you are using `pipenv`, then navigate to the `pydatalab` folder and run `pipenv install`.
         - This will create a `pipenv` environment for `pydatalab` and all of its dependencies that is registered within *this folder* only.
-1. Run the server from the `pydatalab` folder with `pipenv run python pydatalab/main.py`.
-    1.  If you get an error `No module named pydatalab`, run `pipenv run pip install -e .` from the `datalab/pydatalab` folder and then try again.
+    - Alternatively, using another Python environment setup of your choice (we recommend [`uv`](https://github.com/astral-sh/uv)), you can install *datalab* with unpinned dependencies via `pip install -e '.[all]'`, or directly install the locked dependency files found in `./pydatalab/requirements`.
+1. Run the server from the `pydatalab` folder with `pipenv run python pydaatalab/main.py`.
+    - If you get an error `No module named pydatalab`, run `pipenv run pip install -e .` from the `datalab/pydatalab` folder and then try again.
 
 The server should now be accessible at [http://localhost:5001](http://localhost:5001). If the server is running, navigating to this URL will display a simple dashboard with a textual list of available endpoints.
 
