@@ -6,6 +6,8 @@ from flask_login import current_user
 from pydantic import ValidationError
 from pymongo.results import InsertOneResult, UpdateResult
 
+from bson import ObjectId
+
 from pydatalab.config import CONFIG
 from pydatalab.logger import logged_route
 from pydatalab.models.collections import Collection
@@ -108,7 +110,8 @@ def create_collection():
         )
 
     if copy_from_id:
-        raise NotImplementedError("Copying collections is not yet implemented.")
+        raise NotImplementedError(
+            "Copying collections is not yet implemented.")
 
     if CONFIG.TESTING:
         data["creator_ids"] = [24 * "0"]
@@ -133,7 +136,8 @@ def create_collection():
             409,  # 409: Conflict
         )
 
-    data["last_modified"] = data.get("last_modified", datetime.datetime.now().isoformat())
+    data["last_modified"] = data.get(
+        "last_modified", datetime.datetime.now().isoformat())
 
     try:
         data_model = Collection(**data)
@@ -176,7 +180,8 @@ def create_collection():
                 "item_id": {"$in": list(item_ids)},
                 **get_default_permissions(user_only=True),
             },
-            {"$push": {"relationships": {"type": "collections", "immutable_id": immutable_id}}},
+            {"$push": {"relationships": {
+                "type": "collections", "immutable_id": immutable_id}}},
         )
 
         data_model.num_items = results.modified_count
@@ -230,7 +235,8 @@ def save_collection(collection_id):
     updated_data["last_modified"] = datetime.datetime.now().isoformat()
 
     collection = flask_mongo.db.collections.find_one(
-        {"collection_id": collection_id, **get_default_permissions(user_only=True)}
+        {"collection_id": collection_id, **
+            get_default_permissions(user_only=True)}
     )
 
     if not collection:
@@ -277,7 +283,8 @@ def save_collection(collection_id):
 @COLLECTIONS.route("/collections/<collection_id>", methods=["DELETE"])
 def delete_collection(collection_id: str):
     result = flask_mongo.db.collections.delete_one(
-        {"collection_id": collection_id, **get_default_permissions(user_only=True)}
+        {"collection_id": collection_id, **
+            get_default_permissions(user_only=True)}
     )
 
     if result.deleted_count != 1:
@@ -305,7 +312,8 @@ def search_collections():
     query = request.args.get("query", type=str)
     nresults = request.args.get("nresults", default=100, type=int)
 
-    match_obj = {"$text": {"$search": query}, **get_default_permissions(user_only=True)}
+    match_obj = {"$text": {"$search": query}, **
+                 get_default_permissions(user_only=True)}
 
     cursor = [
         json.loads(Collection(**doc).json(exclude_unset=True))
@@ -325,3 +333,49 @@ def search_collections():
     ]
 
     return jsonify({"status": "success", "data": list(cursor)}), 200
+
+
+@COLLECTIONS.route("/collections/<collection_id>", methods=["POST"])
+def add_items_to_collection(collection_id):
+    data = request.get_json()
+    refcodes = data.get("data", {}).get("refcodes", [])
+
+    collection = flask_mongo.db.collections.find_one(
+        {"_id": ObjectId(collection_id)})
+    if not collection:
+        return jsonify({"error": "Collection not found"}), 404
+
+    if not refcodes:
+        return jsonify({"error": "No item provided"}), 400
+
+    item_count = flask_mongo.db.items.count_documents(
+        {"refcode": {"$in": refcodes}})
+
+    if item_count == 0:
+        return jsonify({"error": "No matching items found"}), 404
+
+    update_result = flask_mongo.db.items.update_many(
+        {"refcode": {"$in": refcodes}},
+        {"$addToSet": {"relationships": {
+            "description": "Is a member of",
+            "relation": None,
+            "type": "collections",
+            "immutable_id": ObjectId(collection_id)
+        }}}
+    )
+
+    if update_result.matched_count == 0:
+        return (jsonify({"status": "error", "message": "Unable to add to collection."}), 400)
+
+    if update_result.modified_count == 0:
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "message": "No update was performed",
+                }
+            ),
+            200,
+        )
+
+    return (jsonify({"status": "success"}), 200)
