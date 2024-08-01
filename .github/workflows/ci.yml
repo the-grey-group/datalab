@@ -120,9 +120,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 3
       matrix:
-        browser-backend: ["electron", "chrome"]
+        browser-backend: ["electron", "chrome", "firefox"]
 
     steps:
       - uses: actions/checkout@v4
@@ -158,5 +158,19 @@ jobs:
           working-directory: ./webapp
           record: true
           browser: ${{ matrix.browser-backend }}
+          group: "End-to-end tests (${{ matrix.browser-backend }})"
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+
+      - name: Run component tests
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: ./webapp
+          record: true
+          install: false
+          component: true
+          publish-summary: false
+          browser: ${{ matrix.browser-backend }}
+          group: "Component tests (${{ matrix.browser-backend }})"
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
