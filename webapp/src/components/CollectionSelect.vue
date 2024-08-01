@@ -6,6 +6,7 @@
     multiple
     label="collection_id"
     :filterable="false"
+    placeholder="type to search..."
     @search="debouncedAsyncSearch"
   >
     <template #no-options="{ searching }">
@@ -43,8 +44,8 @@ export default {
   },
   props: {
     modelValue: {
-      type: String,
-      default: "",
+      type: Array,
+      default: () => [],
     },
     formattedItemNameMaxLength: {
       type: Number,

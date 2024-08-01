@@ -1,37 +1,65 @@
 <template>
-  <div v-if="showOptions" class="dflex text-right">
-    <div class="btn-group mr-2" role="group">
-      <button
-        :class="graphStyle == 'elk-stress' ? 'btn btn-default active' : 'btn btn-default'"
-        @click="graphStyle = 'elk-stress'"
-      >
-        stress
-      </button>
-      <button
-        :class="graphStyle == 'cola' ? 'btn btn-default active' : 'btn btn-default'"
-        @click="graphStyle = 'cola'"
-      >
-        force
-      </button>
-      <button
-        :class="graphStyle == 'elk-layered-down' ? 'btn btn-default active' : 'btn btn-default'"
-        @click="graphStyle = 'elk-layered-down'"
-      >
-        horizontal
-      </button>
-      <button
-        :class="graphStyle == 'elk-layered-right' ? 'btn btn-default active' : 'btn btn-default'"
-        @click="graphStyle = 'elk-layered-right'"
-      >
-        vertical
-      </button>
+  <div v-if="showOptions" class="options">
+    <button
+      class="btn btn-default mr-5 mb-2 dropdown-toggle"
+      @click="optionsDisplayed = !optionsDisplayed"
+    >
+      configure
+    </button>
+    <div v-show="optionsDisplayed" class="card card-body dropdown-menu">
+      <label for="graph-style">Graph layout:</label>
+      <div id="graph-style" class="btn-group mr-2" role="group">
+        <button
+          :class="graphStyle == 'elk-stress' ? 'btn btn-default active' : 'btn btn-default'"
+          @click="graphStyle = 'elk-stress'"
+        >
+          stress
+        </button>
+        <button
+          :class="graphStyle == 'cola' ? 'btn btn-default active' : 'btn btn-default'"
+          @click="graphStyle = 'cola'"
+        >
+          force
+        </button>
+        <button
+          :class="graphStyle == 'elk-layered-down' ? 'btn btn-default active' : 'btn btn-default'"
+          @click="graphStyle = 'elk-layered-down'"
+        >
+          horizontal
+        </button>
+        <button
+          :class="graphStyle == 'elk-layered-right' ? 'btn btn-default active' : 'btn btn-default'"
+          @click="graphStyle = 'elk-layered-right'"
+        >
+          vertical
+        </button>
+      </div>
+
+      <label for="ignore-items">Ignore connections to items:</label>
+      <ItemSelect id="ignore-items" v-model="ignoreItems" multiple />
+
+      <label for="ignore-collections">Ignore connections to collections:</label>
+      <CollectionSelect id="ignore-collections" v-model="ignoreCollections" multiple />
+
+      <div class="form-group form-check mt-3">
+        <input
+          id="label-starting-materials-by-name"
+          v-model="labelStartingMaterialsByName"
+          class="form-check-input"
+          type="checkbox"
+        />
+        <label class="form-check-label" for="label-starting-materials-by-name">
+          label starting materials by name</label
+        >
+      </div>
     </div>
   </div>
   <div id="cy" v-bind="$attrs" />
 </template>
 
 <script>
-// import { getItemGraph } from "@/server_fetch_utils.js";
+import ItemSelect from "@/components/ItemSelect.vue";
+import CollectionSelect from "@/components/CollectionSelect.vue";
 import { itemTypes } from "@/resources.js";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
@@ -70,6 +98,11 @@ const layoutOptions = {
 };
 
 export default {
+  name: "ItemGraph",
+  components: {
+    ItemSelect,
+    CollectionSelect,
+  },
   props: {
     graphData: {
       type: Object,
@@ -87,7 +120,30 @@ export default {
   data() {
     return {
       graphStyle: this.defaultGraphStyle,
+      optionsDisplayed: false,
+      ignoreItems: [],
+      ignoreCollections: [],
+      labelStartingMaterialsByName: true,
     };
+  },
+  computed: {
+    filteredGraphData() {
+      const ignoredItemIds = this.ignoreItems.map((d) => d.item_id);
+      const ignoredCollectionIds = this.ignoreCollections.map(
+        (d) => `Collection: ${d.collection_id}`,
+      );
+      return {
+        edges: this.graphData.edges.filter(
+          (edge) =>
+            !(
+              ignoredItemIds.includes(edge.data.source) ||
+              ignoredItemIds.includes(edge.data.target) ||
+              ignoredCollectionIds.includes(edge.data.source)
+            ),
+        ),
+        nodes: this.graphData.nodes,
+      };
+    },
   },
   watch: {
     graphData() {
@@ -97,8 +153,17 @@ export default {
       console.log("graphStyle changed");
       this.generateCyNetworkPlot();
     },
+    ignoreItems() {
+      this.generateCyNetworkPlot();
+    },
+    ignoreCollections() {
+      this.generateCyNetworkPlot();
+    },
+    labelStartingMaterialsByName() {
+      this.generateCyNetworkPlot();
+    },
   },
-  async mounted() {
+  async created() {
     this.generateCyNetworkPlot();
   },
   methods: {
@@ -108,7 +173,7 @@ export default {
       }
       var cy = cytoscape({
         container: document.getElementById("cy"),
-        elements: this.graphData,
+        elements: this.filteredGraphData,
         userPanningEnabled: true,
         minZoom: 0.5,
         maxZoom: 1,
@@ -120,11 +185,15 @@ export default {
           {
             selector: "node",
             style: {
-              "background-color": "#11479e",
               label: "data(id)",
             },
           },
-
+          {
+            selector: 'node[type = "starting_materials"]',
+            style: {
+              label: this.labelStartingMaterialsByName ? "data(name)" : "data(id)",
+            },
+          },
           {
             selector: "edge",
             style: {
@@ -180,14 +249,16 @@ export default {
 };
 </script>
 
-<style>
-#flex-container {
-  flex-flow: column;
+<style scoped>
+.options {
+  position: absolute;
+  z-index: 10;
+  right: 2rem;
 }
 
 #cy {
   width: 100%;
-  height: 800px;
+  height: 90vh;
   /* display: block;*/
 }
 </style>
