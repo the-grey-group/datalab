@@ -469,7 +469,9 @@ def _create_sample(
         )
 
     # check to make sure that item_id isn't taken already
-    if flask_mongo.db.items.find_one({"item_id": sample_dict["item_id"]}):
+    if flask_mongo.db.items.find_one(
+        {"item_id": sample_dict["item_id"], "_deleted": {"$ne": True}}
+    ):
         return (
             dict(
                 status="error",
@@ -602,21 +604,44 @@ def create_samples():
     )  # 207: multi-status
 
 
+@ITEMS.route("/items/<refcode>", methods=["DELETE"])
 @ITEMS.route("/delete-sample/", methods=["POST"])
-def delete_sample():
-    request_json = request.get_json()  # noqa: F821 pylint: disable=undefined-variable
-    item_id = request_json["item_id"]
+def delete_sample(refcode: str | None = None, item_id: str | None = None):
+    """Sets the `_deleted` status an item with the given refcode."""
 
-    result = flask_mongo.db.items.delete_one(
-        {"item_id": item_id, **get_default_permissions(user_only=True)}
-    )
+    if refcode is None:
+        request_json = request.get_json()  # noqa: F821 pylint: disable=undefined-variable
+        item_id = request_json["item_id"]
 
-    if result.deleted_count != 1:
+    if item_id:
+        match = {"item_id": item_id}
+    elif refcode:
+        if not len(refcode.split(":")) == 2:
+            refcode = f"{CONFIG.IDENTIFIER_PREFIX}:{refcode}"
+
+        match = {"refcode": refcode}
+    else:
         return (
             jsonify(
                 {
                     "status": "error",
-                    "message": f"Authorization required to attempt to delete sample with {item_id=} from the database.",
+                    "message": "No item_id or refcode provided.",
+                }
+            ),
+            400,
+        )
+
+    result = flask_mongo.db.items.update_one(
+        {**match, **get_default_permissions(user_only=True)},
+        {"$set": {"_deleted": True}},
+    )
+
+    if result.modified_count != 1:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"Authorization required to attempt to delete sample with {refcode=} / {item_id=} from the database.",
                 }
             ),
             401,

@@ -73,8 +73,10 @@ def get_default_permissions(user_only: bool = True) -> Dict[str, Any]:
 
     """
 
+    match_not_deleted = {"_deleted": {"$ne": True}}
+
     if CONFIG.TESTING:
-        return {}
+        return match_not_deleted
 
     if (
         current_user.is_authenticated
@@ -85,10 +87,15 @@ def get_default_permissions(user_only: bool = True) -> Dict[str, Any]:
         return {}
 
     null_perm = {
-        "$or": [
-            {"creator_ids": {"$size": 0}},
-            {"creator_ids": {"$in": [PUBLIC_USER_ID]}},
-            {"creator_ids": {"$exists": False}},
+        "$and": [
+            {
+                "$or": [
+                    {"creator_ids": {"$size": 0}},
+                    {"creator_ids": {"$in": [PUBLIC_USER_ID]}},
+                    {"creator_ids": {"$exists": False}},
+                ]
+            },
+            match_not_deleted,
         ]
     }
     if current_user.is_authenticated and current_user.person is not None:
@@ -104,10 +111,10 @@ def get_default_permissions(user_only: bool = True) -> Dict[str, Any]:
 
         user_perm = {"creator_ids": {"$in": [current_user.person.immutable_id] + managed_users}}
         if user_only:
-            return user_perm
-        return {"$or": [user_perm, null_perm]}
+            return {"$and": [user_perm, match_not_deleted]}
+        return {"$and": [{"$or": [user_perm, null_perm]}, match_not_deleted]}
 
     elif user_only:
         return {"_id": -1}
 
-    return null_perm
+    return {"$and": [null_perm, match_not_deleted]}

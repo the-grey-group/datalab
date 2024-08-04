@@ -143,7 +143,14 @@ def create_default_indices(
 
     indices = [
         {"type": {"name": "item type", "background": background}},
-        {"item_id": {"name": "unique item ID", "unique": True, "background": background}},
+        {
+            "item_id": {
+                "name": "unique item ID",
+                "unique": True,
+                "background": background,
+                "partialFilterExpression": {"_deleted": {"$type": "bool"}},
+            }
+        },
         {"refcode": {"name": "unique refcode", "unique": True, "background": background}},
         {"last_modified": {"name": "last modified", "background": background}},
         {"creator_ids": {"name": "creators", "background": background}},
@@ -155,9 +162,8 @@ def create_default_indices(
             try:
                 ret += db.items.create_index(field, **options)
             except pymongo.errors.OperationFailure:
-                if allow_rebuild and options.get("name"):
-                    db.items.drop_index(options["name"])
-                    ret += db.items.create_index(field, **options)
+                db.items.drop_index(options["name"])
+                ret += db.items.create_index(field, **options)
 
     user_fts_fields = {"identities.name", "display_name"}
 
