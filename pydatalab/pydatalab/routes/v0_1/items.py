@@ -652,10 +652,22 @@ def update_item_permissions(refcode: str):
             400,
         )
 
+    # Make sure a user cannot remove their own access to an item
+    current_user_id = current_user.person.immutable_id
+    try:
+        creator_ids.remove(current_user_id)
+    except ValueError:
+        pass
+    creator_ids.insert(0, current_user_id)
+
+    # The first ID in the creator list takes precedence; always make sure this is included to avoid orphaned items
     if current_creator_ids:
         base_owner = current_creator_ids[0]
-        if base_owner not in creator_ids:
-            creator_ids.append(base_owner)
+    try:
+        creator_ids.remove(base_owner)
+    except ValueError:
+        pass
+    creator_ids.insert(0, base_owner)
 
     LOGGER.warning("Setting permissions for item %s to %s", refcode, creator_ids)
     result = flask_mongo.db.items.update_one(
