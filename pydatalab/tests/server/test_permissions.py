@@ -38,3 +38,29 @@ def test_unauthenticated_user_permissions(unauthenticated_client):
 
     response = client.get("/starting-materials/")
     assert response.status_code == 401
+
+
+def test_basic_permissions_update(admin_client, admin_user_id, client, user_id):
+    """Test that an admin can share an item with a normal user."""
+
+    response = admin_client.get("/new-sample/", json={"item_id": "test-admin-sample"})
+    assert response.status_code == 200
+
+    response = admin_client.get("/get-item-data/test-admin-sample")
+    assert response.status_code == 200
+    refcode = response["item_data"]["refcode"]
+
+    response = client.get(f"/items/{refcode}")
+    assert response.status_code == 404
+
+    admin_client.patch(f"/items/{refcode}", json={"creators": [{"immutable_id": user_id}]})
+    assert response.status_code == 200
+
+    response = client.get(f"/items/{refcode}")
+    assert response.status_code == 200
+
+    client.patch(f"/items/{refcode}", json={"creators": []})
+    assert response.status_code == 200
+
+    response = client.get(f"/items/{refcode}")
+    assert response.status_code == 404
