@@ -188,12 +188,10 @@ jobs:
           echo "PYDATALAB_TESTING=true" >> pydatalab/.env
           docker compose up --no-build database api app -d --wait
 
-      - name: Show some launch logs (app)
+      - name: Show some launch logs
         run: |
+          docker compose ps -a
           docker compose logs app --tail 1000
-
-      - name: Show some launch logs (API)
-        run: |
           docker compose logs api --tail 1000
 
       - name: Run end-to-end tests
