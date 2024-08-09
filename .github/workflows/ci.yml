@@ -175,16 +175,17 @@ jobs:
           set: |
             app.cache-from=type=gha,scope=build-app
             app.tags=datalab-app:latest
-            app.env.VUE_APP_API_URL=http://localhost:5001
             api.cache-from=type=gha,scope=build-api
             api.tags=datalab-api:latest
-            api.env.PYDATALAB_TESTING=true
             database.cache-from=type=gha,scope=build-database
             database.tags=datalab-database:latest
 
       - name: Start services
         run: |
           # Launch production container profiles and wait for them to come up
+          # Add default API URL argument to Vue prod build
+          echo "VUE_APP_API_URL=http://localhost:5001" >> .env
+          echo "PYDATALAB_TESTING=true" >> pydatalab/.env
           docker compose up --no-build database api app -d --wait
 
       - name: Show some launch logs
