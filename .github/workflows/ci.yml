@@ -115,9 +115,34 @@ jobs:
         working-directory: ./webapp
         run: yarn build
 
+  docker:
+    name: Test Docker builds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Debug info
+        run: |
+          docker image ls
+
+      - name: Build all Docker images and cache them
+        uses: docker/bake-action@v4
+        with:
+          files: docker-compose.yml
+          load: true
+          set: |
+            *.cache-from=type=gha,scope=cached-stage
+            *.cache-to=type=gha,scope=cached-stage,mode=max
+
+
   e2e:
     name: e2e tests
     runs-on: ubuntu-latest
+    needs: [docker]
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -127,29 +152,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Debugging
+      - name: Debug info
         run: |
           docker image ls
+          docker ps -a
 
-      - name: Build the Docker images
-        uses: docker/bake-action@v4
-        with:
-          files: docker-compose.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=cached-stage
-            *.cache-to=type=gha,scope=cached-stage,mode=max
-
-      - name: Start Docker images
+      - name: Start services
         run: |
           # Add default API URL argument to Vue prod build
           echo "VUE_APP_API_URL=http://localhost:5001" >> .env
           echo "PYDATALAB_TESTING=true" >> pydatalab/.env
           # Launch production container profiles and wait for them to come up
-          docker compose up database api app -d --wait
+          docker compose up --no-build database api app -d --wait
 
       - name: Run end-to-end tests
         uses: cypress-io/github-action@v6
