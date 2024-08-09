@@ -174,8 +174,11 @@ jobs:
           targets: 'app,api,database'
           set: |
             app.cache-from=type=gha,scope=build-app
+            app.tags=datalab-app:latest
             api.cache-from=type=gha,scope=build-api
+            api.tags=datalab-api:latest
             database.cache-from=type=gha,scope=build-database
+            database.tags=datalab-database:latest
 
       - name: Debug info
         run: |
