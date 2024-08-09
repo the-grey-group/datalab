@@ -115,9 +115,44 @@ jobs:
         working-directory: ./webapp
         run: yarn build
 
+  docker:
+    name: Test Docker builds
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - "app"
+          - "app_dev"
+          - "api"
+          - "api_dev"
+          - "database"
+          - "database_dev"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Debug info
+        run: |
+          docker image ls
+
+      - name: Build Docker images and cache them
+        uses: docker/bake-action@v5
+        with:
+          files: docker-compose.yml
+          load: true
+          targets: ${{ matrix.target }}
+          set: |
+            *.cache-from=type=gha,scope=build-${{ matrix.target }}
+            *.cache-to=type=gha,scope=build-${{ matrix.target }},mode=max
+
+
   e2e:
     name: e2e tests
     runs-on: ubuntu-latest
+    needs: [docker]
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -130,33 +165,41 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Debugging
-        run: |
-          docker image ls
-
-      - name: Build the Docker images
-        uses: docker/bake-action@v4
+      - name: Load previously built Docker images
+        uses: docker/bake-action@v5
         with:
           files: docker-compose.yml
           load: true
+          push: false
+          targets: 'app,api,database'
           set: |
-            *.cache-from=type=gha,scope=cached-stage
-            *.cache-to=type=gha,scope=cached-stage,mode=max
+            app.cache-from=type=gha,scope=build-app
+            app.tags=datalab-app:latest
+            api.cache-from=type=gha,scope=build-api
+            api.tags=datalab-api:latest
+            database.cache-from=type=gha,scope=build-database
+            database.tags=datalab-database:latest
 
-      - name: Start Docker images
+      - name: Start services
         run: |
+          # Launch production container profiles and wait for them to come up
           # Add default API URL argument to Vue prod build
           echo "VUE_APP_API_URL=http://localhost:5001" >> .env
           echo "PYDATALAB_TESTING=true" >> pydatalab/.env
-          # Launch production container profiles and wait for them to come up
-          docker compose up database api app -d --wait
+          docker compose up --no-build database api app -d --wait
+
+      - name: Show some launch logs
+        run: |
+          docker compose ps -a
+          docker compose logs app --tail 1000
+          docker compose logs api --tail 1000
 
       - name: Run end-to-end tests
         uses: cypress-io/github-action@v6
         with:
           config: baseUrl=http://localhost:8081
           working-directory: ./webapp
-          record: true
+          record: ${{ github.repository == 'datalab-org/datalab' }}
           browser: ${{ matrix.browser-backend }}
           group: "End-to-end tests (${{ matrix.browser-backend }})"
         env:
@@ -166,7 +209,7 @@ jobs:
         uses: cypress-io/github-action@v6
         with:
           working-directory: ./webapp
-          record: true
+          record: ${{ github.repository == 'datalab-org/datalab' }}
           install: false
           component: true
           publish-summary: false
