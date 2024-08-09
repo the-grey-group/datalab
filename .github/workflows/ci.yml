@@ -167,16 +167,38 @@ jobs:
           docker image ls
           docker ps -a
 
-      - name: Load previously built Docker images
+      - name: Load previously built Docker images (app)
         uses: docker/bake-action@v5
         with:
           files: docker-compose.yml
           load: true
-          targets: 'app,api,database'
+          push: false
+          targets: 'app'
           set: |
             app.cache-from=type=gha,scope=build-app
+            app.cache-to=type=gha,scope=build-app,mode=max
+
+      - name: Load previously built Docker images (API)
+        uses: docker/bake-action@v5
+        with:
+          files: docker-compose.yml
+          load: true
+          push: false
+          targets: 'api'
+          set: |
             api.cache-from=type=gha,scope=build-api
+            api.cache-to=type=gha,scope=build-api,mode=max
+
+      - name: Load previously built Docker images (database)
+        uses: docker/bake-action@v5
+        with:
+          files: docker-compose.yml
+          load: true
+          push: false
+          targets: 'database'
+          set: |
             database.cache-from=type=gha,scope=build-database
+            database.cache-to=type=gha,scope=build-database,mode=max
 
       - name: Start services
         run: |
