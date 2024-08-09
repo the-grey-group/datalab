@@ -188,9 +188,13 @@ jobs:
           echo "PYDATALAB_TESTING=true" >> pydatalab/.env
           docker compose up --no-build database api app -d --wait
 
-      - name: Show some launch logs
+      - name: Show some launch logs (app)
         run: |
-          docker compose logs api app --tail 1000
+          docker compose logs app --tail 1000
+
+      - name: Show some launch logs (API)
+        run: |
+          docker compose logs api --tail 1000
 
       - name: Run end-to-end tests
         uses: cypress-io/github-action@v6
