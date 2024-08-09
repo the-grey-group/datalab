@@ -121,9 +121,12 @@ jobs:
     strategy:
       matrix:
         target:
-          - "app,app_dev"
-          - "api,api_dev"
-          - "database,database_dev"
+          - "app"
+          - "app_dev"
+          - "api"
+          - "api_dev"
+          - "database"
+          - "database_dev"
 
     steps:
       - uses: actions/checkout@v4
@@ -142,8 +145,8 @@ jobs:
           load: true
           targets: ${{ matrix.target }}
           set: |
-            *.cache-from=type=gha,scope=cached-stage
-            *.cache-to=type=gha,scope=cached-stage,mode=max
+            *.cache-from=type=gha,scope=build-${{ matrix.target}}
+            *.cache-to=type=gha,scope=build-${{ matrix.target }},mode=max
 
 
   e2e:
