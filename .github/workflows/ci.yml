@@ -121,9 +121,9 @@ jobs:
     strategy:
       matrix:
         target:
-          - ["app", "app_dev"]
-          - ["api", "api_dev"]
-          - ["database", "database_dev"]
+          - "app,app_dev"
+          - "api,api_dev"
+          - "database,database_dev"
 
     steps:
       - uses: actions/checkout@v4
