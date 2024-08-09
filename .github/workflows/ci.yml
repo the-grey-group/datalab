@@ -139,7 +139,7 @@ jobs:
           docker image ls
 
       - name: Build all Docker images and cache them
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v5
         with:
           files: docker-compose.yml
           load: true
@@ -168,7 +168,7 @@ jobs:
           docker ps -a
 
       - name: Load previously built Docker images
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v5
         with:
           files: docker-compose.yml
           load: true
