@@ -138,7 +138,7 @@ jobs:
         run: |
           docker image ls
 
-      - name: Build all Docker images and cache them
+      - name: Build Docker images and cache them
         uses: docker/bake-action@v5
         with:
           files: docker-compose.yml
@@ -175,23 +175,21 @@ jobs:
           set: |
             app.cache-from=type=gha,scope=build-app
             app.tags=datalab-app:latest
+            app.env.VUE_APP_API_URL=http://localhost:5001
             api.cache-from=type=gha,scope=build-api
             api.tags=datalab-api:latest
+            api.env.PYDATALAB_TESTING=true
             database.cache-from=type=gha,scope=build-database
             database.tags=datalab-database:latest
 
-      - name: Debug info
-        run: |
-          docker image ls
-          docker ps -a
-
       - name: Start services
         run: |
-          # Add default API URL argument to Vue prod build
-          echo "VUE_APP_API_URL=http://localhost:5001" >> .env
-          echo "PYDATALAB_TESTING=true" >> pydatalab/.env
           # Launch production container profiles and wait for them to come up
           docker compose up --no-build database api app -d --wait
+
+      - name: Show some launch logs
+        run: |
+          docker compose logs api app --tail 1000
 
       - name: Run end-to-end tests
         uses: cypress-io/github-action@v6
